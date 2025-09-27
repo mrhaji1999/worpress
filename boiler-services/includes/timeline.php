@@ -58,17 +58,34 @@ class Timeline {
             return;
         }
 
-        // Don't log the initial creation 'auto-draft' status.
-        if ($old_status === 'auto-draft') {
-            $message = sprintf(__('Request created with status: %s', 'boiler-services'), get_post_status_object($new_status)->label);
-        } else {
+        $status_obj_new = get_post_status_object($new_status);
+        $status_obj_old = get_post_status_object($old_status);
+        $message = '';
+
+        if ($old_status === 'auto-draft' && $status_obj_new) {
+            $message = sprintf(__('Request created with status: %s', 'boiler-services'), $status_obj_new->label);
+        } elseif($status_obj_new && $status_obj_old) {
             $message = sprintf(
                 __('Status changed from %s to %s', 'boiler-services'),
-                get_post_status_object($old_status)->label,
-                get_post_status_object($new_status)->label
+                $status_obj_old->label,
+                $status_obj_new->label
             );
         }
 
-        self::add_event($post->ID, $message, 'status_change');
+        if ($message) {
+            self::add_event($post->ID, $message, 'status_change');
+        }
+
+        // Notify experts when request is ready for them
+        if ($new_status === 'awaiting_experts') {
+            $experts = Matching::find_matching_experts($post->ID);
+            if (!empty($experts)) {
+                $notification_message = sprintf(__('A new service request (#%d) matching your profile is available.', 'boiler-services'), $post->ID);
+                self::add_event($post->ID, sprintf(__('Notifying %d matching experts.', 'boiler-services'), count($experts)));
+                foreach ($experts as $expert_id) {
+                    Notifications::add($expert_id, $notification_message, get_permalink($post->ID));
+                }
+            }
+        }
     }
 }

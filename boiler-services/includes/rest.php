@@ -62,6 +62,50 @@ class REST {
             'permission_callback' => [$this, 'create_invoice_permission_check'],
             'args' => ['amount' => ['required' => true, 'validate_callback' => 'is_numeric']],
         ]);
+
+        // --- Notification Endpoints ---
+        register_rest_route('boiler-services/v1', '/notifications', [
+            'methods' => \WP_REST_Server::READABLE,
+            'callback' => [$this, 'get_user_notifications'],
+            'permission_callback' => [$this, 'user_is_logged_in_check'],
+        ]);
+        register_rest_route('boiler-services/v1', '/notifications/mark-read', [
+            'methods' => \WP_REST_Server::CREATABLE,
+            'callback' => [$this, 'mark_notification_as_read'],
+            'permission_callback' => [$this, 'user_is_logged_in_check'],
+            'args' => ['id' => ['required' => true, 'validate_callback' => 'is_numeric']],
+        ]);
+    }
+
+    public function user_is_logged_in_check(\WP_REST_Request $request) {
+        $nonce_check = $this->check_nonce($request);
+        if (is_wp_error($nonce_check)) return $nonce_check;
+
+        return is_user_logged_in();
+    }
+
+    public function get_user_notifications(\WP_REST_Request $request) {
+        $user_id = get_current_user_id();
+        $notifications = Notifications::get_notifications($user_id, 20);
+        $unread_count = Notifications::get_unread_count($user_id);
+
+        return new \WP_REST_Response([
+            'notifications' => $notifications,
+            'unread_count'  => $unread_count,
+        ], 200);
+    }
+
+    public function mark_notification_as_read(\WP_REST_Request $request) {
+        $user_id = get_current_user_id();
+        $notification_id = (int) $request['id'];
+
+        $result = Notifications::mark_as_read($notification_id, $user_id);
+
+        if ($result === false) {
+            return new \WP_Error('update_failed', __('Could not mark notification as read.', 'boiler-services'), ['status' => 500]);
+        }
+
+        return new \WP_REST_Response(['success' => true], 200);
     }
 
     // --- PERMISSION CALLBACKS ---
@@ -161,16 +205,22 @@ class REST {
 
     public function handle_expert_response(\WP_REST_Request $request) {
         $request_id = (int) $request['request_id'];
-        $response = sanitize_key($request['response']);
+        $response_action = sanitize_key($request['response']);
         $expert_id = get_current_user_id();
-
-        // In a real implementation, you would save this to the custom DB table.
+        $request_post = get_post($request_id);
 
         $message = sprintf(
             __('Expert responded with: %s', 'boiler-services'),
-            'accept' === $response ? __('Accepted', 'boiler-services') : __('Rejected', 'boiler-services')
+            'accept' === $response_action ? __('Accepted', 'boiler-services') : __('Rejected', 'boiler-services')
         );
         Timeline::add_event($request_id, $message, 'expert_response', $expert_id);
+
+        // Notify customer that an expert has accepted
+        if ($response_action === 'accept') {
+            $expert_user = get_userdata($expert_id);
+            $customer_message = sprintf(__('Expert %s has accepted your service request #%d.', 'boiler-services'), $expert_user->display_name, $request_id);
+            Notifications::add($request_post->post_author, $customer_message, get_permalink($request_id));
+        }
 
         return new \WP_REST_Response(['success' => true, 'message' => __('Response recorded.', 'boiler-services')], 200);
     }
@@ -186,19 +236,24 @@ class REST {
         $message = sprintf(__('Customer selected expert: %s', 'boiler-services'), $expert_user->display_name);
         Timeline::add_event($request_id, $message, 'customer_selection', get_current_user_id());
 
+        // Notify the selected expert
+        $expert_message = sprintf(__('You have been assigned to service request #%d.', 'boiler-services'), $request_id);
+        Notifications::add($expert_id, $expert_message, get_permalink($request_id));
+
         return new \WP_REST_Response(['success' => true, 'message' => __('Expert selected.', 'boiler-services')], 200);
     }
 
     public function handle_create_invoice(\WP_REST_Request $request) {
         $request_id = (int) $request['request_id'];
         $amount = floatval($request['amount']);
-
-        // In a real implementation, you would create a Woo order here.
-        // $order_id = create_woo_order_programmatically(...);
-        // update_post_meta($request_id, '_order_id', $order_id);
+        $request_post = get_post($request_id);
 
         $message = sprintf(__('Invoice created by expert for amount: %s', 'boiler-services'), $amount);
         Timeline::add_event($request_id, $message, 'invoice_created', get_current_user_id());
+
+        // Notify the customer that the invoice is ready
+        $customer_message = sprintf(__('An invoice for %s has been created for your service request #%d. Please proceed with payment.', 'boiler-services'), wc_price($amount), $request_id);
+        Notifications::add($request_post->post_author, $customer_message, get_permalink($request_id));
 
         return new \WP_REST_Response(['success' => true, 'message' => __('Invoice created.', 'boiler-services'), 'order_id' => 0], 200);
     }

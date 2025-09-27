@@ -1,0 +1,119 @@
+/* --- General Dashboard Styles --- */
+.boiler-dashboard-wrap {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+    margin-top: 20px;
+}
+
+.boiler-dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.dashboard-card {
+    background: #fff;
+    border: 1px solid #e2e4e7;
+    border-radius: 4px;
+    box-shadow: 0 1px 1px rgba(0,0,0,0.04);
+    padding: 20px;
+}
+
+.dashboard-card h2 {
+    font-size: 1.5em;
+    margin: 0 0 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eee;
+}
+
+/* --- Notifications Component --- */
+#notifications-badge {
+    display: inline-block;
+    background-color: #d63638;
+    color: #fff;
+    border-radius: 10px;
+    padding: 2px 8px;
+    font-size: 0.8em;
+    margin-left: 8px;
+    vertical-align: middle;
+}
+
+.notifications-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.notifications-list li {
+    padding: 10px;
+    border-bottom: 1px solid #f0f0f1;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: background-color 0.2s ease-in-out;
+}
+
+.notifications-list li:last-child {
+    border-bottom: none;
+}
+
+.notifications-list li.unread {
+    background-color: #f7fcfe;
+    font-weight: bold;
+}
+
+.notifications-list li .mark-read-btn {
+    background: #007cba;
+    color: #fff;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 0.9em;
+}
+.notifications-list li .mark-read-btn:hover {
+    background: #005a87;
+}
+
+/* --- Request/Job Cards --- */
+.request-card {
+    border: 1px solid #e2e4e7;
+    border-radius: 4px;
+    padding: 15px;
+    margin-bottom: 15px;
+}
+.request-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
+    margin-bottom: 10px;
+}
+.request-card-title {
+    font-size: 1.2em;
+    font-weight: bold;
+}
+.request-card-status {
+    background: #f0f0f1;
+    color: #555;
+    padding: 3px 8px;
+    border-radius: 10px;
+    font-size: 0.8em;
+    font-weight: bold;
+}
+.request-card-actions {
+    margin-top: 15px;
+    text-align: right;
+}
+.request-card-actions .button {
+    margin-left: 10px;
+}
+.button.button-primary {
+    background: #007cba;
+    border-color: #007cba;
+}
+.button.button-secondary {
+    color: #007cba;
+    border-color: #007cba;
+    background: #fff;
+}

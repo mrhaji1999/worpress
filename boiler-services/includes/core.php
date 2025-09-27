@@ -26,5 +26,6 @@ class Core {
         new REST();
         new Database();
         new Timeline();
+        new Matching();
     }
 }
